@@ -1,0 +1,5 @@
+- name: Uninstall Nextcloud
+  hosts: controlplane
+  tasks:
+    - name: Reset Nextcloud
+      command: helm uninstall nextcloud

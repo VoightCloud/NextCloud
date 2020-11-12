@@ -1,0 +1,13 @@
+- name: Initialize Kubernetes Control Plane
+  hosts: controlplane
+  tasks:
+    - name: Install haproxy repos
+      community.kubernetes.helm_repository:
+        name: nextcloud
+        repo_url: "https://nextcloud.github.io/helm/"
+
+    - name: Update helm repos
+      command: helm repo update
+
+    - name: Apply haproxy chart
+      command: helm install nextcloud nextcloud/nextcloud -f ../nextcloud-values.yaml
