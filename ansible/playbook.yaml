@@ -1,5 +1,8 @@
 - name: Initialize Kubernetes Control Plane
   hosts: controlplane
+  vars_files:
+    files/vault.txt
+
   tasks:
     - name: Install haproxy repos
       community.kubernetes.helm_repository:
@@ -9,5 +12,23 @@
     - name: Update helm repos
       command: helm repo update
 
-    - name: Apply haproxy chart
-      command: helm install nextcloud nextcloud/nextcloud -f ../nextcloud-values.yaml
+    - name: Add nextcloud database
+      community.general.postgresql_db:
+        login_host: 192.168.137.72
+        login_password: '{{ postgrespassword }}'
+        name: dadcloud
+
+
+    - name: Add nextcloud database user
+      community.general.postgresql_user:
+        login_host: 192.168.137.72
+        login_password: '{{ postgrespassword }}'
+        db: dadcloud
+        name: dadcloud
+        password: '{{ dadcloudpostgrespassword }}'
+        priv: ALL
+
+    - name: Apply nextcloud chart
+      command: >
+        helm install nextcloud nextcloud/nextcloud -f ../nextcloud-values.yaml
+        --set nextcloud.password='{{ dadcloudadminpassword }}'
