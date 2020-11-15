@@ -193,7 +193,7 @@ externalDatabase:
   ## Supported database engines: mysql or postgresql
   type: postgresql
   ## Database host
-  host: postgresql.devops
+  host: postgresql
   port: 5432
   ## Database user
   user: dadcloud
@@ -209,7 +209,7 @@ externalDatabase:
     passwordKey: dadcloudpassword
 
 redis:
-  enabled: false
+  enabled: true
   usePassword: false
 
 ## Cronjob to execute Nextcloud background tasks
