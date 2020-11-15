@@ -1,11 +1,10 @@
 - name: Uninstall Nextcloud
   hosts: controlplane
   vars_files:
-    files/vault.txt
+    files/vault.yaml
   vars:
     namespace: web
     database: dadcloud
-    databaseuser: dadcloud
     dbhost: 192.168.137.72
 
   tasks:
@@ -16,14 +15,11 @@
       command: ansible-galaxy collection install community.kubernetes
       delegate_to: localhost
 
-    - name: Remove nextcloud database user
-      community.general.postgresql_user:
-        login_host: '{{ dbhost }}'
-        login_password: '{{ postgrespassword }}'
-        db: '{{ database }}'
-        name: '{{ databaseuser }}'
-        password: '{{ dadcloudpostgrespassword }}'
-        state: absent
+    - name: Remove DadCloud Secrets
+      command: helm uninstall -n '{{ namespace }}' nextcloud-secrets
+
+    - name: Remove Nextcloud
+      command: helm uninstall -n {{ namespace }} nextcloud
 
     - name: Remove nextcloud database
       community.general.postgresql_db:
@@ -31,9 +27,3 @@
         login_password: '{{ postgrespassword }}'
         name: '{{ database }}'
         state: absent
-
-    - name: Remove DadCloud Secrets
-      command: helm uninstall -n '{{ namespace }}' nextcloud-secrets
-
-    - name: Remove Nextcloud
-      command: helm uninstall -n {{ namespace }} nextcloud

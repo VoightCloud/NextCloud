@@ -1,12 +1,13 @@
 - name: Install NextCloud as Dadcloud
   hosts: controlplane
   vars_files:
-    files/vault.txt
+    files/vault.yaml
   vars:
     namespace: web
     database: dadcloud
     databaseuser: dadcloud
     dbhost: 192.168.137.72
+    dadcloudip: 192.168.137.79
 
   tasks:
     - name: Install Openshift Python Library
@@ -68,6 +69,7 @@
         helm install -n '{{ namespace }}' nextcloud-secrets /tmp/dadcloud-required
         --set dadcloudsql.username='{{ databaseuser }}'
         --set dadcloudsql.password='{{ dadcloudpostgrespassword }}'
+        --set dadcloud.namespace='{{ namespace }}'
 
     - name: Apply NextCloud chart
       command: >
@@ -75,4 +77,5 @@
         --set nextcloud.password='{{ dadcloudadminpassword }}'
         --set externalDatabase.user='{{ databaseuser }}'
         --set externalDatabase.database='{{ database }}'
-        --set externalDatabase.host='{[ dbhost }}'
+        --set externalDatabase.host='{{ dbhost }}'
+        --set service.loadBalancerIP='{{ dadcloudip }}'
