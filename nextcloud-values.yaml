@@ -4,7 +4,7 @@
 ##
 image:
   repository: nextcloud
-  tag: 20.0.1-apache
+  tag: 21.0.5
   pullPolicy: IfNotPresent
   # pullSecrets:
   #   - myRegistrKeySecretName
@@ -25,7 +25,7 @@ ingress:
     kubernetes.io/tls-acme: "true"
   #  nginx.ingress.kubernetes.io/proxy-body-size: 4G
   #  kubernetes.io/tls-acme: "true"
-  #  certmanager.k8s.io/cluster-issuer: letsencrypt-prod
+  #  cert-manager.io/cluster-issuer: letsencrypt-prod
   #  nginx.ingress.kubernetes.io/server-snippet: |-
   #    server_tokens off;
   #    proxy_hide_header X-Powered-By;
@@ -50,8 +50,10 @@ ingress:
   #    location ~ ^/(?:autotest|occ|issue|indie|db_|console) {
   #      deny all;
   #    }
-    hosts:
-      dadcloud.voight.org
+  tls:
+    - secretName: nextcloud-tls
+      hosts:
+        - dadcloud.voight.org
   labels: {}
 
 
@@ -65,9 +67,18 @@ nextcloud:
   host: dadcloud.voight.org
   username: admin
   password: changeme
+  ## Use an existing secret
+  existingSecret:
+    enabled: false
+    # secretName: nameofsecret
+    # usernameKey: username
+    # passwordKey: password
+    # smtpUsernameKey: smtp_username
+    # smtpPasswordKey: smtp_password
   update: 0
+  # If web server is not binding default port, you can define it
+  # containerPort: 8080
   datadir: /var/dadcloud/data
-  tableprefix:
   persistence:
     subPath:
   mail:
@@ -82,15 +93,16 @@ nextcloud:
       name: user
       password: pass
   # PHP Configuration files
-  # Will be injected in /usr/local/etc/php/conf.d
-  phpConfigs: 
+  # Will be injected in /usr/local/etc/php/conf.d for apache image and in /usr/local/etc/php-fpm.d when nginx.enabled: true
+  phpConfigs:
     config.php: |-
       <?php
       $CONFIG = array (
         'check_data_directory_permissions' => false,
         'overwriteprotocol' => 'https',
+        'trusted_domains' => [ '*' ],
+        'trusted_proxies' => [ '*' ]
       );
-
   # Default config files
   # IMPORTANT: Will be used only if you put extra configs, otherwise default will come from nextcloud itself
   # Default confgurations can be found here: https://github.com/nextcloud/docker/tree/master/16.0/apache/config
@@ -115,7 +127,22 @@ nextcloud:
     https.config.php: |-
       <?php
       $CONFIG = array (
-        'overwriteprotocol' => 'https',
+        'overwriteprotocol' => 'https'
+      );
+    proxies.config.php: |-
+      <?php
+      $CONFIG = array (
+        'trusted_proxies' => [ '*' ]
+      );
+    domains.config.php: |-
+      <?php
+      $CONFIG = array (
+        'trusted_domains' => [ '*' ]
+      );
+    perms.config.php: |-
+      <?php
+      $CONFIG = array (
+        'check_data_directory_permissions' => false
       );
 
   # For example, to use S3 as primary storage
@@ -168,6 +195,13 @@ nextcloud:
   extraVolumeMounts:
   #  - name: nfs
   #    mountPath: "/legacy_data"
+
+  # Extra secuurityContext parameters. For example you may need to define runAsNonRoot directive
+  extraSecurityContext:
+    runAsUser: "33"
+    runAsGroup: "33"
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
 
 nginx:
   ## You need to set an fpm version of the image for nextcloud if you want to use nginx!
@@ -306,7 +340,7 @@ resources: {}
 ##
 livenessProbe:
   enabled: true
-  initialDelaySeconds: 30
+  initialDelaySeconds: 60
   periodSeconds: 45
   timeoutSeconds: 5
   failureThreshold: 8
@@ -318,6 +352,14 @@ readinessProbe:
   timeoutSeconds: 5
   failureThreshold: 8
   successThreshold: 1
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+  successThreshold: 1
+
 
 ## Enable pod autoscaling using HorizontalPodAutoscaler
 ## ref: https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
@@ -355,7 +397,7 @@ metrics:
 
   image:
     repository: xperimental/nextcloud-exporter
-    tag: v0.3.0
+    tag: v0.4.0
     pullPolicy: IfNotPresent
 
   ## Metrics exporter resource requests and limits
@@ -377,3 +419,9 @@ metrics:
       prometheus.io/scrape: "true"
       prometheus.io/port: "9205"
     labels: {}
+
+rbac:
+  enabled: false
+  serviceaccount:
+    create: true
+    name: nextcloud-serviceaccount

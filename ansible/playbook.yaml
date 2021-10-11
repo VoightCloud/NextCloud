@@ -8,7 +8,7 @@
     databaseuser: dadcloud
     dbhost: 192.168.137.72
     dadcloudip: 192.168.137.79
-    helmcommand: install
+    helmcommand: upgrade -i
 
   tasks:
     - name: Install Openshift Python Library
@@ -67,14 +67,14 @@
 
     - name: Apply DadCloud Secrets
       command: >
-        helm '{{ helmcommand }}' -n '{{ namespace }}' nextcloud-secrets /tmp/dadcloud-required
+        helm upgrade -i -n '{{ namespace }}' nextcloud-secrets /tmp/dadcloud-required
         --set dadcloudsql.username='{{ databaseuser }}'
         --set dadcloudsql.password='{{ dadcloudpostgrespassword }}'
         --set dadcloud.namespace='{{ namespace }}'
 
     - name: Apply NextCloud chart
       command: >
-        helm '{{ helmcommand }}' -n {{ namespace }} nextcloud nextcloud/nextcloud -f /tmp/nextcloud-values.yaml
+        helm upgrade -i -n {{ namespace }} nextcloud nextcloud/nextcloud -f /tmp/nextcloud-values.yaml
         --set nextcloud.password='{{ dadcloudadminpassword }}'
         --set externalDatabase.user='{{ databaseuser }}'
         --set externalDatabase.database='{{ database }}'
