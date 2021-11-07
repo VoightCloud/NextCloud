@@ -1,0 +1,6 @@
+- name: Install Nextcloud
+  hosts: localhost
+  connection: local
+
+  roles:
+    - nextcloud

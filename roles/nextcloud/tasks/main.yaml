@@ -1,0 +1,128 @@
+- name: Install Openshift Python Library
+  command: pip3 install openshift
+
+- name: Create monitoring namespace
+  community.kubernetes.k8s:
+    name: "{{ namespace }}"
+    api_version: v1
+    kind: namespace
+    state: present
+
+- name: Add Nextcloud Repo
+  community.kubernetes.helm_repository:
+    name: nextcloud
+    repo_url: "https://nextcloud.github.io/helm/"
+
+- name: Apply Nextcloud Persistence
+  kubernetes.core.helm:
+    name: "{{ deployment }}-persistence"
+    chart_ref: ./roles/nextcloud/files/persistence
+    release_namespace: "{{ namespace }}"
+
+- name: Apply Nextcloud Secrets
+  kubernetes.core.helm:
+    name: "{{ namespace }}-secrets"
+    chart_ref: ./roles/nextcloud/files/secrets
+    release_namespace: "{{ namespace }}"
+    release_values:
+      namespace: "{{ namespace }}"
+      dadcloudsql:
+        username: "{{ databaseuser }}"
+        password: "{{ dadcloudpostgrespassword }}"
+      tls:
+        crt: "{{ voightorgcrt }}"
+        key: "{{ voightorgkey }}"
+
+- name: Apply Nextcloud
+  kubernetes.core.helm:
+    name: "{{ deployment }}"
+    chart_ref: nextcloud/nextcloud
+    release_namespace: "{{ namespace }}"
+    release_values:
+      image:
+        tag: 21.0.5
+      ingress:
+        enabled: true
+        annotations:
+          kubernetes.io/ingresss.class: "haproxy"
+          kubernetes.io/tls-acme: "true"
+        tls:
+          - secretName: site-cert
+            hosts:
+              - "{{ ingressHost }}"
+      lifecycle:
+        postStartCommand: [ "/bin/sh", "-c", "chown -R www-data:www-data /var/www/html/data && chmod -R 0770 /var/www/html/data && umask 007" ]
+      nextcloud:
+        host: "{{ ingressHost }}"
+        password: "{{ dadcloudadminpassword }}"
+        phpConfigs:
+          config.php: |-
+            <?php
+            $CONFIG = array (
+            'check_data_directory_permissions' => false,
+            'overwriteprotocol' => 'https',
+            'trusted_domains' => [ '*' ],
+            'trusted_proxies' => [ '*' ]
+            );
+        configs:
+          https.config.php: |-
+            <?php
+            $CONFIG = array (
+            'overwriteprotocol' => 'https'
+            );
+          proxies.config.php: |-
+            <?php
+            $CONFIG = array (
+            'trusted_proxies' => [ '*' ]
+            );
+          domains.config.php: |-
+            <?php
+            $CONFIG = array (
+            'trusted_domains' => [ '*' ]
+            );
+          perms.config.php: |-
+            <?php
+            $CONFIG = array (
+            'check_data_directory_permissions' => false
+            );
+        extraSecurityContext:
+          runAsUser: "33"
+          runAsGroup: "33"
+          runAsNonRoot: true
+          readOnlyRootFilesystem: true
+      internalDatabase:
+        enabled: false
+      externalDatabase:
+        enabled: true
+        type: postgresql
+        host: "{{ dbhost }}"
+        database: "{{ database }}"
+        existingSecret:
+          enabled: true
+          secretName: dadcloudpostgres
+          usernameKey: dadcloudusername
+          passwordKey: dadcloudpassword
+      persistence:
+        enabled: true
+        storageClass: "nfs-nas"
+#        existingClaim: "nextcloud-pvc"
+      livenessProbe:
+        initialDelaySeconds: 60
+        periodSeconds: 45
+        failureThreshold: 8
+      readinessProbe:
+        initialDelaySeconds: 60
+        periodSeconds: 45
+      startupProbe:
+        enabled: true
+        initialDelaySeconds: 60
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - arm64

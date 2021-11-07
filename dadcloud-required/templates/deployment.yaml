@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: Secret
-metadata:
-  name: dadcloudpostgres
-  namespace: {{ .Values.dadcloud.namespace }}
-type: Opaque
-data:
-  dadcloudusername: {{ .Values.dadcloudsql.username | b64enc }}
-  dadcloudpassword: {{ .Values.dadcloudsql.password | b64enc }}
