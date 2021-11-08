@@ -104,8 +104,8 @@
           passwordKey: dadcloudpassword
       persistence:
         enabled: true
-        storageClass: "nfs-nas"
-#        existingClaim: "nextcloud-pvc"
+        storageClass: ""
+        existingClaim: "nextcloud-pvc"
       livenessProbe:
         initialDelaySeconds: 60
         periodSeconds: 45

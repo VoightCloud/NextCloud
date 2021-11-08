@@ -4,18 +4,27 @@ metadata:
   name: nextcloud-pv
 spec:
   capacity:
-    storage: 2000Gi
+    storage: 1000Gi
   accessModes:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
   claimRef:
     name: nextcloud-pvc
     namespace: web
-  nfs:
-    server: 192.168.137.3
-    path: "/volume1/NextCloud"
-  mountOptions:
-    - nfsvers=4.1
+  iscsi:
+    chapAuthSession: false
+    chapAuthDiscovery: false
+    targetPortal: 192.168.137.3:3260
+    iqn: 'iqn.2000-01.com.synology:drive.Nextcloud.402fcc5ed94'
+    lun: 01
+    fsType: 'ext4'
+    readOnly: false
+#    initiatorName: iqn.1993-08.org.debian:01:96d8b2647d
+#  nfs:
+#    server: 192.168.137.3
+#    path: "/volume1/NextCloud"
+#  mountOptions:
+#    - nfsvers=4.1
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -28,5 +37,5 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 2000Gi
+      storage: 1000Gi
   volumeName: "nextcloud-pv"
