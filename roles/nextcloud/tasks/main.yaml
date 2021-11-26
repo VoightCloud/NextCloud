@@ -32,6 +32,8 @@
       tls:
         crt: "{{ voightorgcrt }}"
         key: "{{ voightorgkey }}"
+      redis:
+        password: "{{ redispassword }}"
 
 - name: Apply Nextcloud
   kubernetes.core.helm:
@@ -46,6 +48,7 @@
         annotations:
           kubernetes.io/ingresss.class: "haproxy"
           kubernetes.io/tls-acme: "true"
+          fluentbit.io/parser: nextcloud
         tls:
           - secretName: site-cert
             hosts:
@@ -90,6 +93,16 @@
           runAsGroup: "33"
           runAsNonRoot: true
           readOnlyRootFilesystem: true
+        extraEnv:
+          - name: REDIS_HOST
+            value: redis-master.default.svc.cluster.local
+          - name: REDIS_HOST_PORT
+            value: "6379"
+          - name: REDIS_HOST_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "redis-credentials"
+                key: "redis-password"
       internalDatabase:
         enabled: false
       externalDatabase:
@@ -126,3 +139,4 @@
                     operator: In
                     values:
                       - arm64
+
